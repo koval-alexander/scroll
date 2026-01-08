@@ -76,7 +76,7 @@ int sensor_data_collector(void)
 		}
 		
 		/* Convert angle delta to scroll steps (e.g., ~30 degrees = 1 scroll step) */
-		scroll_delta = (int8_t)(angle_delta / 30);
+		scroll_delta = -(int8_t)(angle_delta / 3);
 		
 		/* Update previous angle for next calculation */
 		if (scroll_delta != 0) {
@@ -85,11 +85,11 @@ int sensor_data_collector(void)
 			printk("Scroll delta: %d\n", scroll_delta);
 			//scroll_pos pos;
 			//pos.scroll_val = scroll_delta;		
-			// k_msgq_put(&hids_queue, &scroll_delta, K_NO_WAIT);
+			k_msgq_put(&scroll_queue, &scroll_delta, K_NO_WAIT);
 
-			// if (k_msgq_num_used_get(&hids_queue) == 1) {
-			// 	k_work_submit(&hids_work);
-			// }
+			if (k_msgq_num_used_get(&scroll_queue) == 1) {
+				k_work_submit(&hids_work);
+			}
 		}
     }
 }

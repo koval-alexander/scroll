@@ -5,7 +5,7 @@
 #include <zephyr/types.h>
 
 
-extern struct k_msgq hids_queue;
+extern struct k_msgq scroll_queue;
 extern struct k_work hids_work;
 
 #endif /* _SCROLL_H_ */

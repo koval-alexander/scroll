@@ -90,6 +90,11 @@ K_MSGQ_DEFINE(hids_queue,
 	      HIDS_QUEUE_SIZE,
 	      4);
 
+K_MSGQ_DEFINE(scroll_queue,
+	      sizeof(int8_t),
+	      HIDS_QUEUE_SIZE,
+	      4);
+
 #if CONFIG_BT_DIRECTED_ADVERTISING
 /* Bonded address queue. */
 K_MSGQ_DEFINE(bonds_queue,
@@ -518,6 +523,32 @@ static void hid_init(void)
 	__ASSERT(err == 0, "HIDS initialization failed\n");
 }
 
+static void mouse_scroll_send(int8_t scroll_delta)
+{
+	for (size_t i = 0; i < CONFIG_BT_HIDS_MAX_CLIENT_COUNT; i++) {
+
+		if (!conn_mode[i].conn) {
+			continue;
+		}
+
+		if (conn_mode[i].in_boot_mode) {
+			bt_hids_boot_mouse_inp_rep_send(&hids_obj,
+							     conn_mode[i].conn,
+							     NULL,
+							     0,
+							     0,
+							     NULL);
+		} else {
+			uint8_t buffer[INPUT_REP_BUTTONS_LEN];
+
+			buffer[1] = (uint8_t) scroll_delta;
+
+			bt_hids_inp_rep_send(&hids_obj, conn_mode[i].conn,
+						  INPUT_REP_BUTTONS_INDEX,
+						  buffer, sizeof(buffer), NULL);
+		}
+	}
+}
 
 static void mouse_movement_send(int16_t x_delta, int16_t y_delta)
 {
@@ -572,6 +603,12 @@ static void mouse_handler(struct k_work *work)
 
 	while (!k_msgq_get(&hids_queue, &pos, K_NO_WAIT)) {
 		mouse_movement_send(pos.x_val, pos.y_val);
+		//mouse_scroll_send(1);
+	}
+
+	uint8_t scroll_delta;
+	while (!k_msgq_get(&scroll_queue, &scroll_delta, K_NO_WAIT)) {
+		mouse_scroll_send(scroll_delta);
 	}
 }
 
@@ -700,7 +737,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	bool data_to_send = false;
 	struct mouse_pos pos;
 	uint32_t buttons = button_state & has_changed;
-
+	printk("Button state changed: 0x%08X, changed: 0x%08X\n",
+	       button_state, has_changed);
 	memset(&pos, 0, sizeof(struct mouse_pos));
 
 	if (IS_ENABLED(CONFIG_BT_HIDS_SECURITY_ENABLED)) {

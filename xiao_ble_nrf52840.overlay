@@ -16,7 +16,7 @@
 		compatible = "gpio-keys";
 		button {
 			label = "button";
-			gpios = <&gpio0 18 0>;
+			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
