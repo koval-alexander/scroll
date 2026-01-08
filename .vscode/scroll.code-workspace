@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"nrf-connect.applicationOptions": {
+        	"${workspaceFolder}": {
+           		"flash": {
+             		"softreset": true,
+				}
+           	}
+        }
+	}
+}

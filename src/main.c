@@ -78,7 +78,7 @@ BT_HIDS_DEF(hids_obj,
 	    INPUT_REP_MOVEMENT_LEN,
 	    INPUT_REP_MEDIA_PLAYER_LEN);
 
-static struct k_work hids_work;
+struct k_work hids_work;
 struct mouse_pos {
 	int16_t x_val;
 	int16_t y_val;

@@ -21,6 +21,10 @@
 	};
 };
 
-&uicr {
-	/delete-property/ gpio-as-nreset;
+
+&i2c1 {
+	as5600@36 {
+		compatible = "ams,as5600";
+		reg = <0x36>;
+	};
 };
