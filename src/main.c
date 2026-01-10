@@ -136,6 +136,8 @@ K_MSGQ_DEFINE(mitm_queue,
 	      CONFIG_BT_HIDS_MAX_CLIENT_COUNT,
 	      4);
 
+static void num_comp_reply(bool accept);
+
 #if CONFIG_BT_DIRECTED_ADVERTISING
 static void bond_find(const struct bt_bond_info *info, void *user_data)
 {
@@ -253,6 +255,7 @@ static void pairing_process(struct k_work *work)
 	} else {
 		printk("Press Button 1 to confirm, Button 2 to reject.\n");
 	}
+	num_comp_reply(true);
 }
 
 
@@ -758,9 +761,10 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	}
 
 	if (buttons & KEY_LEFT_MASK) {
-		pos.x_val -= MOVEMENT_SPEED;
-		printk("%s(): left\n", __func__);
-		data_to_send = true;
+		
+		bt_unpair(BT_ID_DEFAULT, BT_ADDR_LE_ANY);
+		printk("Cleared all connections\n");
+		return;
 	}
 	if (buttons & KEY_UP_MASK) {
 		pos.y_val -= MOVEMENT_SPEED;
@@ -817,10 +821,34 @@ static void bas_notify(void)
 	bt_bas_set_battery_level(battery_level);
 }
 
+static bool write_word_to_uicr(volatile uint32_t * addr, uint32_t word)
+{
+    if (*addr == word)
+    {
+        // Allready set. Nothing more to do.
+        return true;
+    }
+    else
+    {
+        // Register has default value. Ready to write...
+        NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+
+        *addr = word;
+
+        NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+
+        NVIC_SystemReset();
+    }
+}
 
 int main(void)
 {
 	int err;
+
+	write_word_to_uicr(&NRF_UICR->PSELRESET[0], 0);
+	write_word_to_uicr(&NRF_UICR->PSELRESET[1], 0);
 
 	printk("Starting Bluetooth Peripheral HIDS mouse example\n");
 

@@ -28,3 +28,7 @@
 		reg = <0x36>;
 	};
 };
+
+&uicr {
+	/delete-property/ gpio-as-nreset;
+};
