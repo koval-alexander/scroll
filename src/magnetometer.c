@@ -12,6 +12,8 @@
 
 struct sensor_value rotation;
 
+uint8_t scroll_resolution_multiplier = 15; // Higher value = finer scroll resolution
+
 static const struct device *get_as5600_sensor(void)
  {
  	const struct device *const dev = DEVICE_DT_GET_ONE(ams_as5600);

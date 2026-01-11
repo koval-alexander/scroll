@@ -8,4 +8,6 @@
 extern struct k_msgq scroll_queue;
 extern struct k_work hids_work;
 
+extern uint8_t scroll_resolution_multiplier;
+
 #endif /* _SCROLL_H_ */
