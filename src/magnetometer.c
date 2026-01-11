@@ -12,7 +12,8 @@
 
 struct sensor_value rotation;
 
-uint8_t scroll_resolution_multiplier = 15; // Higher value = finer scroll resolution
+/* Initialize scroll resolution multiplier with default value */
+uint8_t scroll_resolution_multiplier = SCROLL_RESOLUTION_MULTIPLIER;
 
 static const struct device *get_as5600_sensor(void)
  {
@@ -39,13 +40,14 @@ static const struct device *get_as5600_sensor(void)
 int sensor_data_collector(void)
 {
 	static int32_t prev_rotation_angle = 0;
+	static int32_t scroll_accumulator = 0; /* Accumulator for fractional scroll units */
 	const struct device *sensor_dev = get_as5600_sensor();
 	if (sensor_dev == NULL) {
 		return -1;
 	}
 
     while (1) {
-		k_sleep(K_MSEC(20));
+		k_sleep(K_MSEC(8)); // 8ms delay ~100Hz sampling
 
 		
 		int ret = sensor_sample_fetch(sensor_dev);
@@ -62,6 +64,7 @@ int sensor_data_collector(void)
 
 		int32_t current_angle;
 		int32_t angle_delta;
+		int32_t scroll_units;
 		int8_t scroll_delta;
 		
 		/* Convert sensor_value rotation (degrees) to integer angle */
@@ -77,16 +80,29 @@ int sensor_data_collector(void)
 			angle_delta += 360;
 		}
 		
-		/* Convert angle delta to scroll steps (e.g., ~30 degrees = 1 scroll step) */
-		scroll_delta = -(int8_t)(angle_delta / 3);
+		/* Update previous angle */
+		prev_rotation_angle = current_angle;
 		
-		/* Update previous angle for next calculation */
+		/* Convert angle delta to high-resolution scroll units
+		 * Formula: scroll_units = -(angle_delta * RESOLUTION_MULTIPLIER) / DEGREES_PER_NOTCH
+		 * Negative sign inverts direction for natural scrolling
+		 * Example: 6° rotation with 120 multiplier = 120 units = 1 standard notch
+		 */
+		scroll_units = -(angle_delta * SCROLL_RESOLUTION_MULTIPLIER) / SCROLL_DEGREES_PER_NOTCH;
+		
+		/* Accumulate fractional scroll values for smooth movement */
+		scroll_accumulator += scroll_units;
+		
+		/* Convert accumulated units to integer scroll steps */
+		scroll_delta = (int8_t)(scroll_accumulator / SCROLL_RESOLUTION_MULTIPLIER);
+		
+		/* Send scroll events if we have full steps */
 		if (scroll_delta != 0) {
-			prev_rotation_angle = current_angle;
+			/* Subtract sent units from accumulator, keeping remainder */
+			scroll_accumulator -= (scroll_delta * SCROLL_RESOLUTION_MULTIPLIER);
 
-			printk("Scroll delta: %d\n", scroll_delta);
-			//scroll_pos pos;
-			//pos.scroll_val = scroll_delta;		
+			printk("Scroll delta: %d (accumulator: %d)\n", scroll_delta, scroll_accumulator);
+			
 			k_msgq_put(&scroll_queue, &scroll_delta, K_NO_WAIT);
 
 			if (k_msgq_num_used_get(&scroll_queue) == 1) {

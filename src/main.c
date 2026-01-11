@@ -28,21 +28,24 @@
 
 #define BASE_USB_HID_SPEC_VERSION   0x0101
 
-#define INPUT_REP_WHEEL_BTN_LEN 2
+#define INPUT_REP_WHEEL_BTN_LEN 4
 #define INPUT_REP_WHEEL_BTN_ID  1
 #define INPUT_REP_WHEEL_BTN_INDEX 0
-#define WHEEL_BYTE_INDEX 1
+#define WHEEL_BYTE_INDEX 3
 
 #define FEATURE_REP_RES_LEN 1
 #define FEATURE_REP_RES_ID 2
 #define FEATURE_REP_RES_INDEX 0
+
+/* Scroll resolution multiplier - standard is 120 units per notch */
+#define SCROLL_RESOLUTION_MULTIPLIER 120
 
 /* HIDs queue size. */
 #define HIDS_QUEUE_SIZE 10
 
 /* HIDS instance. */
 BT_HIDS_DEF(hids_obj,
-	    INPUT_REP_WHEEL_BTN_LEN);
+	    INPUT_REP_WHEEL_BTN_LEN, FEATURE_REP_RES_LEN);
 
 struct k_work hids_work;
 
@@ -91,14 +94,15 @@ static void hid_feature_report_handler(struct bt_hids_rep *rep, struct bt_conn *
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (write) {
-		printk("HID Feature Report written by %s, id: %d, size: %d\n",
-		       addr, rep->data[0], rep->size);
+		/* Host is reading the feature report - send current multiplier */
 		rep->data[0] = scroll_resolution_multiplier;
+		printk("HID Feature Report read by %s, sending multiplier: %d\n",
+		       addr, scroll_resolution_multiplier);
 	} else {
-		printk("HID Feature Report read by %s, id: %d, size: %d\n",
-		       addr, rep->data[0], rep->size);
+		/* Host is writing the feature report - update multiplier */
 		scroll_resolution_multiplier = rep->data[0];
-		printk("Scroll resolution multiplier set to: %d\n", scroll_resolution_multiplier);
+		printk("HID Feature Report written by %s, multiplier set to: %d\n",
+		       addr, scroll_resolution_multiplier);
 	}
 }
 
@@ -109,52 +113,64 @@ static void hid_init(void)
 	struct bt_hids_inp_rep *hids_inp_rep;
 	
 	static const uint8_t report_map[] = {
-		0x05, 0x01,     /* Usage Page (Generic Desktop) */
-		0x09, 0x02,     /* Usage (Mouse) */
-
-		0xA1, 0x01,     /* Collection (Application) */
-
-		/* Report ID 1: Mouse buttons + scroll/pan */
-		0x85, 0x01,       /* Report Id 1 */
-		0x09, 0x01,       /* Usage (Pointer) */
-		0xA1, 0x00,       /* Collection (Physical) */
-		0x95, 0x05,       /* Report Count (3) */
-		0x75, 0x01,       /* Report Size (1) */
-		0x05, 0x09,       /* Usage Page (Buttons) */
-		0x19, 0x01,       /* Usage Minimum (01) */
-		0x29, 0x05,       /* Usage Maximum (05) */
-		0x15, 0x00,       /* Logical Minimum (0) */
-		0x25, 0x01,       /* Logical Maximum (1) */
-		0x81, 0x02,       /* Input (Data, Variable, Absolute) */
-		0x95, 0x01,       /* Report Count (1) */
-		0x75, 0x03,       /* Report Size (3) */
-		0x81, 0x01,       /* Input (Constant) for padding */
-		0x75, 0x08,       /* Report Size (8) */
-		0x95, 0x01,       /* Report Count (1) */
-		0x05, 0x01,       /* Usage Page (Generic Desktop) */
-		0x09, 0x38,       /* Usage (Wheel) */
-		0x15, 0x81,       /* Logical Minimum (-127) */
-		0x25, 0x7F,       /* Logical Maximum (127) */
-		0x81, 0x06,       /* Input (Data, Variable, Relative) */
-		0xC0,             /* End Collection (Physical) */
-
-		/* Report ID 2: Mouse motion */
-		0x85, 0x02,       /* Report Id 2 */
-		0x09, 0x01,       /* Usage (Pointer) */
-		0xA1, 0x00,       /* Collection (Physical) */
-		0x75, 0x0C,       /* Report Size (12) */
-		0x95, 0x02,       /* Report Count (2) */
-		0x05, 0x01,       /* Usage Page (Generic Desktop) */
-		0x09, 0x30,       /* Usage (X) */
-		0x09, 0x31,       /* Usage (Y) */
-		0x16, 0x01, 0xF8, /* Logical maximum (2047) */
-		0x26, 0xFF, 0x07, /* Logical minimum (-2047) */
-		0x81, 0x06,       /* Input (Data, Variable, Relative) */
-		0xC0,             /* End Collection (Physical) */
-		
-		0xC0,             /* End Collection (Application) */
+		0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+		0x09, 0x02,        // Usage (Mouse)
+		0xA1, 0x01,        // Collection (Application)
+		0x85, 0x01,        //   Report ID (1)
+		0x09, 0x01,        //   Usage (Pointer)
+		0xA1, 0x00,        //   Collection (Physical)
+		// Buttons
+		0x05, 0x09,        //     Usage Page (Button)
+		0x19, 0x01,        //     Usage Minimum (0x01)
+		0x29, 0x03,        //     Usage Maximum (0x03)
+		0x95, 0x03,        //     Report Count (3)
+		0x75, 0x01,        //     Report Size (1)
+		0x15, 0x00,        //     Logical Minimum (0)
+		0x25, 0x01,        //     Logical Maximum (1)
+		0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+		// Padding
+		0x75, 0x05,        //     Report Size (5)
+		0x95, 0x01,        //     Report Count (1)
+		0x81, 0x01,        //     Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+		// X and Y axis
+		0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
+		0x09, 0x30,        //     Usage (X)
+		0x09, 0x31,        //     Usage (Y)
+		0x95, 0x02,        //     Report Count (2)
+		0x75, 0x08,        //     Report Size (8)
+		0x15, 0x81,        //     Logical Minimum (-127)
+		0x25, 0x7F,        //     Logical Maximum (127)
+		0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+		// Wheel
+		0xA1, 0x02,        //     Collection (Logical)
+		// Resolution Multiplier Feature Report
+		0x85, 0x02,        //       Report ID (2)
+		0x09, 0x48,        //       Usage (0x48)
+		0x95, 0x01,        //       Report Count (1)
+		0x75, 0x08,        //       Report Size (8)
+		0x15, 0x00,        //       Logical Minimum (0)
+		0x25, 0x01,        //       Logical Maximum (1)
+		0x35, 0x01,        //       Physical Minimum (1)
+		0x45, 0x20,        //       Physical Maximum (32)
+		0xB1, 0x02,        //       Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+		// 0x95, 0x01,        //       Report Count (1)
+		// 0x75, 0x06,        //       Report Size (6)
+		// 0xB1, 0x01,        //       Feature (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+		// Wheel
+		0x85, 0x01,        //       Report ID (1)
+		0x09, 0x38,        //       Usage (Wheel)
+		0x35, 0x00,        //       Physical Minimum (0)
+		0x45, 0x00,        //       Physical Maximum (0)
+		0x15, 0x81,        //       Logical Minimum (-127)
+		0x25, 0x7F,        //       Logical Maximum (127)
+		0x75, 0x08,        //       Report Size (8)
+		0x81, 0x06,        //       Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+		0xC0,              //     End Collection
+		0xC0,              //   End Collection
+		0xC0,              // End Collection
 	};
 
+	
 	hids_init_param.rep_map.data = report_map;
 	hids_init_param.rep_map.size = sizeof(report_map);
 
@@ -166,6 +182,14 @@ static void hid_init(void)
 	hids_inp_rep->size = INPUT_REP_WHEEL_BTN_LEN;
 	hids_inp_rep->id = INPUT_REP_WHEEL_BTN_ID;
 	hids_init_param.inp_rep_group_init.cnt++;
+
+/* Setup Feature Report for Resolution Multiplier */
+	struct bt_hids_outp_feat_rep *hids_feat_rep;
+	hids_feat_rep = &hids_init_param.feat_rep_group_init.reports[0];
+	hids_feat_rep->size = FEATURE_REP_RES_LEN;
+	hids_feat_rep->id = FEATURE_REP_RES_ID;
+	hids_feat_rep->handler = hid_feature_report_handler;
+	hids_init_param.feat_rep_group_init.cnt++;
 
 	hids_init_param.is_mouse = true;
 	hids_init_param.pm_evt_handler = hids_pm_evt_handler;
