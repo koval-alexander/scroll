@@ -37,11 +37,9 @@
 #define FEATURE_REP_RES_ID 2
 #define FEATURE_REP_RES_INDEX 0
 
-/* Scroll resolution multiplier - standard is 120 units per notch */
-#define SCROLL_RESOLUTION_MULTIPLIER 120
 
 /* HIDs queue size. */
-#define HIDS_QUEUE_SIZE 10
+#define HIDS_QUEUE_SIZE 50
 
 /* HIDS instance. */
 BT_HIDS_DEF(hids_obj,
@@ -95,12 +93,12 @@ static void hid_feature_report_handler(struct bt_hids_rep *rep, struct bt_conn *
 
 	if (write) {
 		/* Host is reading the feature report - send current multiplier */
-		rep->data[0] = scroll_resolution_multiplier;
+		rep->data[0] = 1;//scroll_resolution_multiplier;
 		printk("HID Feature Report read by %s, sending multiplier: %d\n",
 		       addr, scroll_resolution_multiplier);
 	} else {
 		/* Host is writing the feature report - update multiplier */
-		scroll_resolution_multiplier = rep->data[0];
+		//scroll_resolution_multiplier = rep->data[0];
 		printk("HID Feature Report written by %s, multiplier set to: %d\n",
 		       addr, scroll_resolution_multiplier);
 	}
@@ -151,11 +149,8 @@ static void hid_init(void)
 		0x15, 0x00,        //       Logical Minimum (0)
 		0x25, 0x01,        //       Logical Maximum (1)
 		0x35, 0x01,        //       Physical Minimum (1)
-		0x45, 0x20,        //       Physical Maximum (32)
+		0x45, 0x10,        //       Physical Maximum (16) <-------
 		0xB1, 0x02,        //       Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-		// 0x95, 0x01,        //       Report Count (1)
-		// 0x75, 0x06,        //       Report Size (6)
-		// 0xB1, 0x01,        //       Feature (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
 		// Wheel
 		0x85, 0x01,        //       Report ID (1)
 		0x09, 0x38,        //       Usage (Wheel)
