@@ -1,0 +1,1 @@
+add_subdirectory_ifdef(CONFIG_CUSTOM_AS5600 custom_as5600)

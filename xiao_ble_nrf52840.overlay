@@ -24,8 +24,9 @@
 
 &i2c1 {
 	as5600@36 {
-		compatible = "ams,as5600";
+		compatible = "zephyr,custom-as5600";
 		reg = <0x36>;
+		status = "okay";
 	};
 };
 

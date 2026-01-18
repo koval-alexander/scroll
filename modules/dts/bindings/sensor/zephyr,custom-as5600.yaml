@@ -1,0 +1,6 @@
+description: |
+    Custom AMS AS5600 Angular position sensor
+
+compatible: "zephyr,custom-as5600"
+
+include: [sensor-device.yaml, i2c-device.yaml]

@@ -18,7 +18,7 @@ uint8_t scroll_resolution_multiplier = SCROLL_RESOLUTION_MULTIPLIER;
 
 static const struct device *get_as5600_sensor(void)
  {
- 	const struct device *const dev = DEVICE_DT_GET_ONE(ams_as5600);
+ 	const struct device *const dev = DEVICE_DT_GET_ONE(zephyr_custom_as5600);
  	//const struct device *const dev = DT_COMPAT_ams_as5600_BUS_i2c;
  
  	if (dev == NULL) {

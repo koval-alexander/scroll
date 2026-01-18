@@ -5,8 +5,13 @@
 #
 cmake_minimum_required(VERSION 3.20.0)
 
+list(APPEND EXTRA_ZEPHYR_MODULES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/modules
+) 
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(scroll)
+
 
 FILE(GLOB app_sources src/*.c)
 target_include_directories(app PRIVATE inc)
