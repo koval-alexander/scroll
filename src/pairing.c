@@ -166,26 +166,26 @@ static void advertising_process(struct k_work *work)
 
 static void pairing_process(struct k_work *work)
 {
-	int err;
-	struct pairing_data_mitm pairing_data;
+	// int err;
+	// struct pairing_data_mitm pairing_data;
 
-	char addr[BT_ADDR_LE_STR_LEN];
+	// char addr[BT_ADDR_LE_STR_LEN];
 
-	err = k_msgq_peek(&mitm_queue, &pairing_data);
-	if (err) {
-		return;
-	}
+	// err = k_msgq_peek(&mitm_queue, &pairing_data);
+	// if (err) {
+	// 	return;
+	// }
 
-	bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn),
-			  addr, sizeof(addr));
+	// bt_addr_le_to_str(bt_conn_get_dst(pairing_data.conn),
+	// 		  addr, sizeof(addr));
 
-	printk("Passkey for %s: %06u\n", addr, pairing_data.passkey);
+	// printk("Passkey for %s: %06u\n", addr, pairing_data.passkey);
 
-	if (IS_ENABLED(CONFIG_SOC_SERIES_NRF54HX) || IS_ENABLED(CONFIG_SOC_SERIES_NRF54LX)) {
-		printk("Press Button 0 to confirm, Button 1 to reject.\n");
-	} else {
-		printk("Press Button 1 to confirm, Button 2 to reject.\n");
-	}
+	// if (IS_ENABLED(CONFIG_SOC_SERIES_NRF54HX) || IS_ENABLED(CONFIG_SOC_SERIES_NRF54LX)) {
+	// 	printk("Press Button 0 to confirm, Button 1 to reject.\n");
+	// } else {
+	// 	printk("Press Button 1 to confirm, Button 2 to reject.\n");
+	// }
 	num_comp_reply(true);
 }
 

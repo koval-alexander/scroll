@@ -21,6 +21,7 @@ LOG_MODULE_REGISTER(custom_as5600, CONFIG_SENSOR_LOG_LEVEL);
 #define AS5600_ANGLE_REGISTER_H 0x0E
 #define AS5600_ANGLE_REGISTER_RAW_H 0x0C
 #define AS5600_STATUS_REGISTER  0x0B
+#define AS5600_CONF_REGISTER   0x07
 #define AS5600_FULL_ANGLE       360
 #define AS5600_PULSES_PER_REV   4096
 #define AS5600_MILLION_UNIT 1000000
@@ -29,6 +30,23 @@ LOG_MODULE_REGISTER(custom_as5600, CONFIG_SENSOR_LOG_LEVEL);
 #define AS5600_STATUS_ML_BIT    (4) /* Magnet too weak */
 #define AS5600_STATUS_MD_BIT    (5) /* Magnet detected */
 
+typedef union {
+    uint16_t word;
+    struct {
+        uint8_t lsb;
+        uint8_t msb;
+    } bytes;
+    uint8_t raw[2];
+    struct {
+        uint16_t power_mode : 2;
+        uint16_t hysteresis : 2;
+        uint16_t output_stage : 2;
+        uint16_t pwm_freq : 2;
+        uint16_t watchdog : 2;
+        uint16_t slow_filter : 2;
+        uint16_t fast_filter : 2;
+    } bits;
+} as5600_conf_reg_t;
 
 struct as5600_dev_cfg {
     struct i2c_dt_spec i2c_port;
@@ -109,6 +127,28 @@ static int as5600_initialize(const struct device *dev)
     struct as5600_dev_data *const dev_data = dev->data;
 
     dev_data->position = 0;
+
+    as5600_conf_reg_t conf_reg;
+    int err = i2c_burst_read_dt(&((struct as5600_dev_cfg *)dev->config)->i2c_port,
+                AS5600_CONF_REGISTER,
+                (uint8_t *)&conf_reg,
+                sizeof(conf_reg));
+    if (err != 0) {
+        LOG_ERR("Failed to read config register: %d", err);
+        return err;
+    }
+
+    conf_reg.bits.power_mode = 1; // Set to LPM1
+    conf_reg.bits.hysteresis = 2; // Medium hysteresis
+
+    err = i2c_burst_write_dt(&((struct as5600_dev_cfg *)dev->config)->i2c_port,
+                AS5600_CONF_REGISTER,
+                (uint8_t *)&conf_reg,
+                sizeof(conf_reg));
+    if (err != 0) {
+        LOG_ERR("Failed to write config register: %d", err);
+        return err;
+    }
 
     LOG_INF("Device %s initialized", dev->name);
 

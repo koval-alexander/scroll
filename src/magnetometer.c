@@ -3,6 +3,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/regulator.h>
 #include <math.h>
 
 #include "magnetometer.h"
@@ -11,10 +12,11 @@
 #define SENSOR_THREAD_PRIORITY 7
 #define SENSOR_THREAD_STACKSIZE 1024
 
-
+static const struct device *regulator_dev = DEVICE_DT_GET(DT_NODELABEL(mag_pwr));
 
 /* Initialize scroll resolution multiplier with default value */
 uint8_t scroll_resolution_multiplier = SCROLL_RESOLUTION_MULTIPLIER;
+bool hirez_enabled = false;
 
 static const struct device *get_as5600_sensor(void)
  {
@@ -53,6 +55,21 @@ int sensor_data_collector(void)
     while (1) {
 		k_sleep(K_MSEC(15)); // 15ms delay ~66Hz sampling
 
+		if (bt_connected) {
+			if (regulator_is_enabled(regulator_dev) == false) {
+				regulator_enable(regulator_dev);
+				printk("Magnetometer power enabled\n");
+				k_sleep(K_MSEC(10)); // Wait for sensor to power up
+			}
+		} else {
+			if (regulator_is_enabled(regulator_dev) == true) {
+				regulator_disable(regulator_dev);
+				printk("Magnetometer power disabled\n");
+			}
+			k_sleep(K_MSEC(100));
+			continue;
+		}
+		
 		
 		int ret = sensor_sample_fetch(sensor_dev);
 		if (ret != 0) {
@@ -90,8 +107,12 @@ int sensor_data_collector(void)
 		scroll_accumulator += angle_delta;
 		
 		/* Convert accumulated units to integer scroll steps */
-		scroll_delta = (int8_t)(scroll_accumulator / SCROLL_DEGREES_PER_TICK);
-		
+		if (hirez_enabled) {
+			scroll_delta = (int8_t)(scroll_accumulator / SCROLL_DEGREES_PER_TICK);
+		} else {
+			scroll_delta = (int8_t)(scroll_accumulator / SCROLL_DEGREES_PER_TICK_NORMAL);
+		}
+		/* Apply hysteresis to avoid small jittery scrolls */		
 		if (scroll_delta > 0 && prev_neg && scroll_delta < SCROLL_HYSTERESIS_THRESHOLD) continue;
 		if (scroll_delta < 0 && !prev_neg && scroll_delta > -SCROLL_HYSTERESIS_THRESHOLD) continue;
 		prev_neg = (scroll_delta < 0);
@@ -101,7 +122,7 @@ int sensor_data_collector(void)
 			/* Subtract sent units from accumulator, keeping remainder */
 			scroll_accumulator -= (scroll_delta * SCROLL_DEGREES_PER_TICK);
 
-			printk("Scroll delta: %d\n", scroll_delta);
+			//printk("Scroll delta: %d\n", scroll_delta);
 			
 			#if SCROLL_INVERSE
 			scroll_delta = -scroll_delta;

@@ -19,17 +19,78 @@
 			gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
 		};
 	};
-};
 
+	mag_pwr: mag-pwr-ctrl {
+		compatible = "regulator-fixed";
+		label = "mag-pwr-ctrl";
+		regulator-name = "mag-pwr-ctrl";
+		enable-gpios = <&gpio1 13 (1 << 8)>;
+		//enable-gpios = <&xiao_d 8 0 (1 << 8)>;
+		regulator-boot-on;
+	};
+
+	zephyr,user {
+		io-channels = <&adc 7>;
+	};
+
+	gpios {
+		compatible = "gpio-leds";
+		bmswitch: bm_switch {
+			label = "bm-switch";
+			gpios = <&gpio0 14 (GPIO_ACTIVE_LOW | GPIO_OPEN_DRAIN)>;
+		};
+	};
+};
 
 &i2c1 {
 	as5600@36 {
 		compatible = "zephyr,custom-as5600";
 		reg = <0x36>;
 		status = "okay";
+		vin-supply = <&mag_pwr>;
 	};
 };
 
 &uicr {
 	/delete-property/ gpio-as-nreset;
 };
+
+
+&xiao_d {
+	gpio-map = <0 0 &gpio0 2 0>,
+			   <1 0 &gpio0 3 0>,
+			   <2 0 &gpio0 28 0>,
+			   <3 0 &gpio0 29 0>,
+			   <4 0 &gpio0 4 0>,
+			   <5 0 &gpio0 5 0>,
+			   <6 0 &gpio1 11 0>,
+			   <7 0 &gpio1 12 0>,
+			   <8 0 &gpio1 13 0>,
+			   <9 0 &gpio1 14 0>,
+			   <10 0 &gpio1 15 0>;
+};
+
+&adc {
+	#io-channel-cells = <1>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_AIN7>;
+		zephyr,resolution = <12>;
+	};
+};
+
+&spi2 {
+	status = "disabled";
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+
