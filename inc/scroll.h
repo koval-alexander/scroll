@@ -15,8 +15,15 @@
 /* Degrees per notch in normal mode (without multiplier) */
 #define SCROLL_DEGREES_PER_TICK_NORMAL 10.0f
 /* Degrees per tick adjusted by resolution multiplier */
-
 #define SCROLL_DEGREES_PER_TICK (SCROLL_DEGREES_PER_NOTCH / SCROLL_RESOLUTION_MULTIPLIER)
+/* Low power mode timeouts in milliseconds */
+#define LPM_TIMEOUT_MS 3000
+#define DOZE_TIMEOUT_MS 10000
+
+#define ACTIVE_MODE_PERIOD_MS 15
+#define LPM_MODE_PERIOD_MS 50
+#define DOZE_MODE_PERIOD_MS 5000
+
 
 extern struct k_msgq scroll_queue;
 extern struct k_work hids_work;

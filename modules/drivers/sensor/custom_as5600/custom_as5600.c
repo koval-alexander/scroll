@@ -15,6 +15,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
+#include "custom_as5600.h"
 
 LOG_MODULE_REGISTER(custom_as5600, CONFIG_SENSOR_LOG_LEVEL);
 
@@ -97,8 +98,9 @@ static int as5600_fetch(const struct device *dev, enum sensor_channel chan)
                 sizeof(buffer));
 
     /* invalid readings preserves the last good value */
+    uint16_t position = sys_get_be16(buffer);
     if (!err) {
-        dev_data->position = sys_get_be16(buffer);
+        dev_data->position = position;
     }
 
     return err;
@@ -115,10 +117,80 @@ static int as5600_get(const struct device *dev, enum sensor_channel chan,
 
         val->val2 = (((int32_t)dev_data->position * AS5600_FULL_ANGLE) %
                  AS5600_PULSES_PER_REV) * (AS5600_MILLION_UNIT / AS5600_PULSES_PER_REV);
+        if (val->val1 > 360) {
+            printk("\n\nInvalid position value: %x\n\n", dev_data->position);
+        }
     } else {
         return -ENOTSUP;
     }
 
+    return 0;
+}
+
+int as5600_attr_set(const struct device *dev, enum sensor_channel chan, enum sensor_attribute attr, const struct sensor_value *val)
+{
+    if (chan == SENSOR_CHAN_ROTATION) {
+        enum as5600_attributes as_attr = (enum as5600_attributes)attr;
+        switch (as_attr) {
+            case AS5600_POWER_MODE:
+                {
+                    as5600_conf_reg_t conf_reg;
+                    const struct as5600_dev_cfg *dev_cfg = dev->config;
+
+                    int err = i2c_burst_read_dt(&dev_cfg->i2c_port,
+                                AS5600_CONF_REGISTER,
+                                (uint8_t *)&conf_reg,
+                                sizeof(conf_reg));
+                    if (err != 0) {
+                        LOG_ERR("Failed to read config register: %d", err);
+                        return err;
+                    }
+
+                    conf_reg.bits.power_mode = val->val1;
+
+                    err = i2c_burst_write_dt(&dev_cfg->i2c_port,
+                                AS5600_CONF_REGISTER,
+                                (uint8_t *)&conf_reg,
+                                sizeof(conf_reg));
+                    if (err != 0) {
+                        LOG_ERR("Failed to write config register: %d", err);
+                        return err;
+                    }
+                }
+                break;
+
+            case AS5600_HYSTERESIS:
+            {
+                as5600_conf_reg_t conf_reg;
+                const struct as5600_dev_cfg *dev_cfg = dev->config;
+
+                int err = i2c_burst_read_dt(&dev_cfg->i2c_port,
+                            AS5600_CONF_REGISTER,
+                            (uint8_t *)&conf_reg,
+                            sizeof(conf_reg));
+                if (err != 0) {
+                    LOG_ERR("Failed to read config register: %d", err);
+                    return err;
+                }
+
+                conf_reg.bits.hysteresis = val->val1;
+
+                err = i2c_burst_write_dt(&dev_cfg->i2c_port,
+                            AS5600_CONF_REGISTER,
+                            (uint8_t *)&conf_reg,
+                            sizeof(conf_reg));
+                if (err != 0) {
+                    LOG_ERR("Failed to write config register: %d", err);
+                    return err;
+                }
+            }break;
+
+            default:
+                return -ENOTSUP;
+        }
+    } else {
+        return -ENOTSUP;
+    }
     return 0;
 }
 
@@ -128,28 +200,6 @@ static int as5600_initialize(const struct device *dev)
 
     dev_data->position = 0;
 
-    as5600_conf_reg_t conf_reg;
-    int err = i2c_burst_read_dt(&((struct as5600_dev_cfg *)dev->config)->i2c_port,
-                AS5600_CONF_REGISTER,
-                (uint8_t *)&conf_reg,
-                sizeof(conf_reg));
-    if (err != 0) {
-        LOG_ERR("Failed to read config register: %d", err);
-        return err;
-    }
-
-    conf_reg.bits.power_mode = 1; // Set to LPM1
-    conf_reg.bits.hysteresis = 2; // Medium hysteresis
-
-    err = i2c_burst_write_dt(&((struct as5600_dev_cfg *)dev->config)->i2c_port,
-                AS5600_CONF_REGISTER,
-                (uint8_t *)&conf_reg,
-                sizeof(conf_reg));
-    if (err != 0) {
-        LOG_ERR("Failed to write config register: %d", err);
-        return err;
-    }
-
     LOG_INF("Device %s initialized", dev->name);
 
     return 0;
@@ -158,6 +208,8 @@ static int as5600_initialize(const struct device *dev)
 static const struct sensor_driver_api as5600_driver_api = {
 	.sample_fetch = as5600_fetch,
 	.channel_get = as5600_get,
+    .attr_set = as5600_attr_set,
+    .attr_get = NULL,
 };
 
 #define AS5600_INIT(n)						\

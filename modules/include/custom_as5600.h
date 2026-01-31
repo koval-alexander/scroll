@@ -1,0 +1,74 @@
+#ifndef CUSTOM_AS5600_H_
+#define CUSTOM_AS5600_H_
+
+#include <zephyr/drivers/sensor.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum as5600_attributes {
+    AS5600_POWER_MODE = SENSOR_ATTR_COMMON_COUNT + 1,
+    AS5600_HYSTERESIS,
+    AS5600_OUTPUT_STAGE,
+    AS5600_PWM_FREQUENCY,
+    AS5600_WATCHDOG,
+    AS5600_SLOW_FILTER,
+    AS5600_FAST_FILTER,
+};
+
+enum as5600_power_mode {
+    AS5600_POWER_MODE_NOM = 0,
+    AS5600_POWER_MODE_LPM1 = 1,
+    AS5600_POWER_MODE_LPM2 = 2,
+    AS5600_POWER_MODE_LPM3 = 3,
+};
+
+enum as5600_hysteresis {
+    AS5600_HYSTERESIS_OFF = 0,
+    AS5600_HYSTERESIS_1LSB = 1,
+    AS5600_HYSTERESIS_2LSB = 2,
+    AS5600_HYSTERESIS_3LSB = 3,
+};
+
+enum as5600_output_stage {
+    AS5600_OUTPUT_STAGE_ANALOG_0_100 = 0,
+    AS5600_OUTPUT_STAGE_ANALOG_10_90 = 1,
+    AS5600_OUTPUT_STAGE_DIGITAL_PWM = 2,
+};
+
+enum as5600_pwm_frequency {
+    AS5600_PWM_FREQ_115HZ = 0,
+    AS5600_PWM_FREQ_230HZ = 1,
+    AS5600_PWM_FREQ_460HZ = 2,
+    AS5600_PWM_FREQ_920HZ = 3,
+};
+
+enum as5600_watchdog {
+    AS5600_WATCHDOG_OFF = 0,
+    AS5600_WATCHDOG_ON = 1,
+};
+
+enum as5600_slow_filter {
+    AS5600_SLOW_FILTER_16x = 0, //forced in low power modes
+    AS5600_SLOW_FILTER_8x = 1,
+    AS5600_SLOW_FILTER_4x = 2,
+    AS5600_SLOW_FILTER_2x = 3,
+};
+
+enum as5600_fast_filter {
+    AS5600_FAST_FILTER_SLOW_ONLY = 0,
+    AS5600_FAST_FILTER_6LSB = 1,
+    AS5600_FAST_FILTER_7LSB = 2,
+    AS5600_FAST_FILTER_9LSB = 3,
+    AS5600_FAST_FILTER_18LSB = 4,
+    AS5600_FAST_FILTER_21LSB = 5,
+    AS5600_FAST_FILTER_24LSB = 6,
+    AS5600_FAST_FILTER_10LSB = 7,
+};
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* CUSTOM_AS5600_H_ */

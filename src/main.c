@@ -399,7 +399,7 @@ static void bas_notify(void)
 		return;
 	}
 
-	LOG_DBG("ADC raw value: %X", bat_adc_buf);
+	//LOG_DBG("ADC raw value: %X", bat_adc_buf);
 
 	val_mv = bat_adc_buf;
 	err = adc_raw_to_millivolts_dt(&bat_adc_channel, &val_mv);
@@ -409,14 +409,14 @@ static void bas_notify(void)
 	if (err < 0) {
 	    LOG_ERR(" (value in mV not available)\n");
 	} else {
-		LOG_DBG("Battery voltage = %d mV\n", val_mv);
+		//LOG_DBG("Battery voltage = %d mV\n", val_mv);
 	}
 
 	gpio_pin_set_dt(&red_led, 0);
 	gpio_pin_set_dt(&bm_switch, 0);
 
 	battery_level = voltage_to_battery_percentage(val_mv);
-	LOG_INF("Battery level: %d%%\n", battery_level);
+	//LOG_INF("Battery level: %d%%\n", battery_level);
 	bt_bas_set_battery_level(battery_level);
 }
 
@@ -472,7 +472,7 @@ void gpio_init(void)
 		printk("Red LED device not ready\n");
 		return;
 	}
-	ret = gpio_pin_configure_dt(&red_led, GPIO_OUTPUT_ACTIVE);
+	ret = gpio_pin_configure_dt(&red_led, GPIO_OUTPUT_INACTIVE);
 	if (ret < 0) {
 		printk("Failed to configure red LED pin\n");
 		return;
@@ -481,7 +481,7 @@ void gpio_init(void)
 		printk("Green LED device not ready\n");
 		return;
 	}
-	ret = gpio_pin_configure_dt(&green_led, GPIO_OUTPUT_INACTIVE);
+	ret = gpio_pin_configure_dt(&green_led, GPIO_OUTPUT_ACTIVE);
 	if (ret < 0) {
 		printk("Failed to configure green LED pin\n");
 		return;
@@ -504,6 +504,20 @@ void gpio_init(void)
 		printk("Failed to configure BM Switch pin\n");
 		return;
 	}
+}
+
+//void (*func)(const struct bt_bond_info *info, void *user_data)
+void count_handler(const struct bt_bond_info *info, void *user_data)
+{
+	int *count = (int *)user_data;
+	(*count)++;
+}
+
+int bonds_count(void)
+{
+	int count = 0;
+	bt_foreach_bond(BT_ID_DEFAULT, count_handler, &count);
+	return count;
 }
 
 int main(void)
@@ -545,8 +559,6 @@ int main(void)
 
 	configure_buttons();
 
-	struct bt_conn_info conn_info;
-
 	while (1) {
 		k_sleep(K_SECONDS(1));
 
@@ -554,7 +566,8 @@ int main(void)
 			bas_notify();
 		}
 
-		if (is_adv_running) {
+		if (is_adv_running && bonds_count() == 0) {
+			// Flash blue LED to indicate pairing mode
 			gpio_pin_set_dt(&blue_led, 1);
 			k_sleep(K_MSEC(100));
 			gpio_pin_set_dt(&blue_led, 0);

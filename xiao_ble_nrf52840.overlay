@@ -24,9 +24,9 @@
 		compatible = "regulator-fixed";
 		label = "mag-pwr-ctrl";
 		regulator-name = "mag-pwr-ctrl";
-		enable-gpios = <&gpio1 13 (1 << 8)>;
-		//enable-gpios = <&xiao_d 8 0 (1 << 8)>;
+		enable-gpios = <&gpio1 13 (1 << 9)>;
 		regulator-boot-on;
+		startup-delay-us = <1000>;
 	};
 
 	zephyr,user {
